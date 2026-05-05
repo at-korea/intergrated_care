@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>경기도 통합돌봄서비스 — 심층 분석 대시보드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f7fa; --surface:#fff; --surface2:#f0f2f7;
+  --border:#dde1ea; --border2:#c4cad8;
+  --text:#1a2236; --text-muted:#6b7595; --text-light:#9aa3be;
+  --accent:#1a56db; --accent-hover:#1344b8; --accent-light:#e8effe;
+  --green:#0e7a5a; --green-bg:#e6f7f2;
+  --orange:#b45309; --orange-bg:#fef3e2;
+  --pink:#9d174d; --pink-bg:#fce7f3;
+  --shadow:0 1px 4px rgba(0,0,0,.08),0 2px 12px rgba(0,0,0,.04);
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:20px 32px;position:sticky;top:0;z-index:100;box-shadow:0 1px 8px rgba(0,0,0,.06)}
+.header-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.logo-wrap{display:flex;align-items:center;gap:12px}
+.logo-bar{width:4px;height:32px;border-radius:2px;background:linear-gradient(180deg,var(--accent) 0%,#56ccf2 100%)}
+.header h1{font-size:1.25rem;font-weight:700}
+.header h1 .sub{font-size:.8rem;font-weight:400;color:var(--text-muted);margin-left:8px}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:14px}
+.kpi{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.kpi .lbl{font-size:.72rem;color:var(--text-muted);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.kpi .val{font-size:1.5rem;font-weight:700;color:var(--accent);margin-top:2px;line-height:1.1}
+.kpi .sub{font-size:.7rem;color:var(--text-light);margin-top:2px}
+.kpi.green .val{color:var(--green)} .kpi.orange .val{color:var(--orange)} .kpi.pink .val{color:var(--pink)}
+.main{max-width:1500px;margin:0 auto;padding:24px 32px}
+
+.tab-bar{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:24px;overflow-x:auto}
+.tab{padding:10px 18px;border:none;background:transparent;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:600;color:var(--text-muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all .15s}
+.tab:hover{color:var(--accent)}
+.tab.active{color:var(--accent);border-color:var(--accent)}
+
+.section{display:none}
+.section.active{display:block}
+.section-title{font-size:1.05rem;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.section-desc{font-size:.85rem;color:var(--text-muted);margin-bottom:18px;line-height:1.6}
+
+.card-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 22px;box-shadow:var(--shadow);margin-bottom:18px}
+.card-title{font-size:.92rem;font-weight:700;margin-bottom:4px}
+.card-sub{font-size:.78rem;color:var(--text-muted);margin-bottom:14px}
+
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:900px){.grid-2,.grid-3{grid-template-columns:1fr}}
+
+.chart-wrap{position:relative;height:320px}
+.chart-wrap.tall{height:520px}
+
+/* Heatmap */
+.heatmap-wrap{overflow-x:auto;padding-bottom:6px}
+.heatmap{border-collapse:separate;border-spacing:2px;font-size:.78rem}
+.heatmap th{background:var(--surface2);padding:6px 10px;text-align:center;font-weight:600;color:var(--text-muted);border-radius:4px;white-space:nowrap}
+.heatmap th.row-h{text-align:right;background:transparent;color:var(--text);font-weight:600}
+.heatmap td{padding:6px 10px;text-align:center;border-radius:4px;font-weight:600;cursor:default;transition:transform .1s;min-width:48px}
+.heatmap td:hover{transform:scale(1.06)}
+.heatmap td.zero{color:var(--text-light);background:#fafbfd;font-weight:400}
+.heatmap td.total{background:var(--surface2);color:var(--text);font-weight:700}
+
+/* Common business table */
+.cb-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.cb-table th{text-align:left;padding:10px 12px;background:var(--surface2);color:var(--text-muted);font-weight:600;border-bottom:2px solid var(--border);position:sticky;top:0}
+.cb-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top}
+.cb-table tr:hover{background:var(--accent-light)}
+.cb-name{font-weight:600;color:var(--text)}
+.cb-count{display:inline-flex;align-items:center;justify-content:center;background:var(--accent);color:#fff;font-weight:700;border-radius:12px;padding:2px 10px;font-size:.78rem;min-width:30px}
+.cb-cities{font-size:.76rem;color:var(--text-muted);line-height:1.5}
+.tag{display:inline-block;font-size:.7rem;padding:1px 8px;border-radius:8px;font-weight:600;margin-right:4px}
+.tag.전국{background:var(--green-bg);color:var(--green);border:1px solid #86efac}
+.tag.경기도{background:var(--orange-bg);color:var(--orange);border:1px solid #fcd9a3}
+.tag.지역특화{background:var(--pink-bg);color:var(--pink);border:1px solid #f9a8d4}
+.tag.미분류{background:var(--surface2);color:var(--text-muted);border:1px solid var(--border)}
+
+.cb-controls{display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.cb-controls input{border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-family:inherit;font-size:.84rem;outline:none;width:240px}
+.cb-controls input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(26,86,219,.12)}
+.cb-controls select{border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:.84rem}
+
+.insight-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.insight-list li{padding:10px 14px;background:var(--accent-light);border-left:3px solid var(--accent);border-radius:4px;font-size:.85rem;line-height:1.6}
+.insight-list li b{color:var(--accent)}
+.insight-list li.warn{background:#fef3e2;border-color:var(--orange)}
+.insight-list li.warn b{color:var(--orange)}
+.insight-list li.note{background:#fce7f3;border-color:var(--pink)}
+.insight-list li.note b{color:var(--pink)}
+
+.legend{display:flex;align-items:center;gap:12px;font-size:.76rem;color:var(--text-muted);margin-top:10px}
+.legend-bar{width:140px;height:10px;border-radius:5px;background:linear-gradient(90deg,#fafbfd,#1a56db)}
+
+.footer{padding:24px 32px;color:var(--text-light);font-size:.78rem;text-align:center;border-top:1px solid var(--border);margin-top:30px}
+.footer a{color:var(--accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-top">
+    <div class="logo-wrap">
+      <div class="logo-bar"></div>
+      <h1>경기도 통합돌봄서비스 심층 분석 <span class="sub">시군별 격차 · 카테고리 패턴 · 대상 커버리지 · 공통 사업</span></h1>
+    </div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi"><div class="lbl">전체 사업</div><div class="val" id="kpi-total">-</div><div class="sub">31개 시군 합계</div></div>
+    <div class="kpi green"><div class="lbl">전국 표준</div><div class="val" id="kpi-nat">-</div><div class="sub">중앙정부 사업</div></div>
+    <div class="kpi orange"><div class="lbl">경기도 사업</div><div class="val" id="kpi-gg">-</div><div class="sub">광역단위 사업</div></div>
+    <div class="kpi pink"><div class="lbl">지역특화</div><div class="val" id="kpi-loc">-</div><div class="sub">시군 자체 사업</div></div>
+    <div class="kpi"><div class="lbl">공통 사업명</div><div class="val" id="kpi-common">-</div><div class="sub">4개 시군 이상</div></div>
+    <div class="kpi"><div class="lbl">평균 사업/시군</div><div class="val" id="kpi-avg">-</div><div class="sub">최대-최소 격차</div></div>
+  </div>
+</header>
+
+<main class="main">
+
+<div class="tab-bar">
+  <button class="tab active" data-tab="t1">📊 시군별 격차</button>
+  <button class="tab" data-tab="t2">🗂 카테고리 패턴</button>
+  <button class="tab" data-tab="t3">👥 대상별 커버리지</button>
+  <button class="tab" data-tab="t4">🔁 공통/중복 사업</button>
+  <button class="tab" data-tab="t5">💡 핵심 인사이트</button>
+</div>
+
+<!-- TAB 1: 시군별 격차 -->
+<section class="section active" id="t1">
+  <div class="section-title">📊 시군별 사업 공급 격차</div>
+  <div class="section-desc">31개 시군의 절대 사업 수 · 사업구분(전국/경기도/지역특화) 비율 · 다양성 지수를 비교합니다. 인구 보정 없이 절대 건수 기준입니다.</div>
+
+  <div class="card-panel">
+    <div class="card-title">시군별 총 사업 수 (정렬)</div>
+    <div class="card-sub">막대 색상은 사업구분 누적: 전국(녹) · 경기도(주황) · 지역특화(자주)</div>
+    <div class="chart-wrap tall"><canvas id="ch-city-stack"></canvas></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card-panel">
+      <div class="card-title">지역특화 비율 Top 10</div>
+      <div class="card-sub">자체 기획 사업이 많은 시군 — 행정 적극성 지표</div>
+      <div class="chart-wrap"><canvas id="ch-local-top"></canvas></div>
+    </div>
+    <div class="card-panel">
+      <div class="card-title">지역특화 비율 Bottom 10</div>
+      <div class="card-sub">전국·경기도 사업 의존도가 높은 시군</div>
+      <div class="chart-wrap"><canvas id="ch-local-bot"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">서비스 다양성 지수 (Shannon, 1.0=균형)</div>
+    <div class="card-sub">7개 대분류에 사업이 골고루 분포할수록 높음. 낮을수록 특정 영역에 편중되어 있음</div>
+    <div class="chart-wrap tall"><canvas id="ch-diversity"></canvas></div>
+  </div>
+</section>
+
+<!-- TAB 2: 카테고리 패턴 -->
+<section class="section" id="t2">
+  <div class="section-title">🗂 사업 카테고리별 패턴</div>
+  <div class="section-desc">7개 대분류의 분포와 시군 × 카테고리 히트맵. 어떤 영역이 주력이고 어떤 영역이 사각지대인지 살펴봅니다.</div>
+
+  <div class="grid-2">
+    <div class="card-panel">
+      <div class="card-title">대분류별 전체 분포</div>
+      <div class="chart-wrap"><canvas id="ch-cat"></canvas></div>
+    </div>
+    <div class="card-panel">
+      <div class="card-title">대분류 × 사업구분</div>
+      <div class="card-sub">각 카테고리에서 전국/경기도/지역특화의 비중</div>
+      <div class="chart-wrap"><canvas id="ch-cat-type"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">시군 × 대분류 히트맵</div>
+    <div class="card-sub">셀 색이 진할수록 해당 영역에 사업이 많이 배치됨. 0건은 흐리게 표시</div>
+    <div class="heatmap-wrap"><div id="heatmap"></div></div>
+    <div class="legend"><span>0건</span><div class="legend-bar"></div><span>최대</span></div>
+  </div>
+</section>
+
+<!-- TAB 3: 대상별 -->
+<section class="section" id="t3">
+  <div class="section-title">👥 지원대상별 커버리지</div>
+  <div class="section-desc">자유기술 형식의 지원대상을 9개 표준 그룹으로 정규화하여 분포를 분석합니다.</div>
+
+  <div class="grid-2">
+    <div class="card-panel">
+      <div class="card-title">표준화된 지원대상 분포</div>
+      <div class="card-sub">노인+장애인이 사실상 동시 대상인 경우가 많음</div>
+      <div class="chart-wrap"><canvas id="ch-target"></canvas></div>
+    </div>
+    <div class="card-panel">
+      <div class="card-title">대상별 사업 비중 변화</div>
+      <div class="chart-wrap"><canvas id="ch-target-bar"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">시군 × 대상 히트맵</div>
+    <div class="card-sub">시군별로 어떤 대상자에게 더 많은 사업이 배치되어 있는지 비교</div>
+    <div class="heatmap-wrap"><div id="heatmap-target"></div></div>
+  </div>
+</section>
+
+<!-- TAB 4: 공통 사업 -->
+<section class="section" id="t4">
+  <div class="section-title">🔁 여러 시군에 걸친 공통 사업</div>
+  <div class="section-desc">동일한 사업명이 4개 이상의 시군에 등장하는 사업 — 사실상 표준화된 핵심 사업들입니다.</div>
+
+  <div class="card-panel">
+    <div class="cb-controls">
+      <input type="text" id="cb-search" placeholder="사업명 검색...">
+      <select id="cb-cat-filter">
+        <option value="">대분류 전체</option>
+      </select>
+      <span style="font-size:.82rem;color:var(--text-muted);margin-left:auto"><strong id="cb-count">0</strong>개 사업 표시</span>
+    </div>
+    <div style="overflow-x:auto;max-height:600px;overflow-y:auto">
+      <table class="cb-table" id="cb-table">
+        <thead><tr><th>등장 시군 수</th><th>사업명</th><th>대분류</th><th>사업구분</th><th>등장 시군</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">시군별 고유 사업 수 (해당 시군에만 등장하는 사업명)</div>
+    <div class="card-sub">자체 기획 능력의 또 다른 지표</div>
+    <div class="chart-wrap tall"><canvas id="ch-unique"></canvas></div>
+  </div>
+</section>
+
+<!-- TAB 5: 인사이트 -->
+<section class="section" id="t5">
+  <div class="section-title">💡 핵심 인사이트 요약</div>
+  <div class="section-desc">데이터에서 도출한 주요 발견점</div>
+
+  <div class="card-panel">
+    <div class="card-title">📊 시군별 격차</div>
+    <ul class="insight-list" id="ins-1"></ul>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">🗂 카테고리 패턴</div>
+    <ul class="insight-list" id="ins-2"></ul>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">👥 지원대상</div>
+    <ul class="insight-list" id="ins-3"></ul>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">🔁 공통/중복 사업</div>
+    <ul class="insight-list" id="ins-4"></ul>
+  </div>
+
+  <div class="card-panel">
+    <div class="card-title">⚠️ 데이터 품질 메모</div>
+    <ul class="insight-list" id="ins-5"></ul>
+  </div>
+</section>
+
+</main>
+
+<div class="footer">
+  출처: <a href="https://www.mohw.go.kr/menu.es?mid=a60600000000" target="_blank">보건복지부 지역사회 통합돌봄</a> ·
+  원본 대시보드: <a href="https://wanderingstone.github.io/gg-welfare-dashboard/" target="_blank">gg-welfare-dashboard</a> ·
+  분석 기준: 2026.03 · 총 1,568건
+</div>
+
+<script>
+const D = {"meta": {"total": 1568, "cities": 31, "city_order": ["수원시", "용인시", "고양시", "화성시", "성남시", "부천시", "남양주시", "안산시", "평택시", "안양시", "시흥시", "파주시", "김포시", "의정부시", "광주시", "하남시", "양주시", "광명시", "군포시", "오산시", "이천시", "안성시", "구리시", "포천시", "의왕시", "양평군", "여주시", "동두천시", "과천시", "가평군", "연천군"], "cat_order": ["보건의료", "건강관리예방", "요양", "일상생활돌봄", "주거복지", "가족지원", "기타"], "type_order": ["전국", "경기도", "지역특화", "미분류"], "target_order": ["노인", "노인+장애인", "장애인", "노인(치매)", "장기요양", "저소득/수급", "가족/아동/청소년", "기타/누구나", "미지정"], "avg_per_cat": {"보건의료": 8.2, "건강관리예방": 12.7, "요양": 4.0, "일상생활돌봄": 17.0, "주거복지": 6.3, "가족지원": 0.1, "기타": 2.3}}, "city_cat": {"수원시": {"보건의료": 16, "건강관리예방": 19, "요양": 6, "일상생활돌봄": 21, "주거복지": 8, "가족지원": 2, "기타": 0}, "용인시": {"보건의료": 4, "건강관리예방": 16, "요양": 2, "일상생활돌봄": 26, "주거복지": 9, "가족지원": 0, "기타": 3}, "고양시": {"보건의료": 11, "건강관리예방": 24, "요양": 1, "일상생활돌봄": 16, "주거복지": 5, "가족지원": 0, "기타": 1}, "화성시": {"보건의료": 14, "건강관리예방": 0, "요양": 7, "일상생활돌봄": 22, "주거복지": 5, "가족지원": 0, "기타": 0}, "성남시": {"보건의료": 6, "건강관리예방": 7, "요양": 6, "일상생활돌봄": 11, "주거복지": 1, "가족지원": 0, "기타": 0}, "부천시": {"보건의료": 5, "건강관리예방": 11, "요양": 1, "일상생활돌봄": 15, "주거복지": 2, "가족지원": 0, "기타": 2}, "남양주시": {"보건의료": 10, "건강관리예방": 10, "요양": 6, "일상생활돌봄": 31, "주거복지": 3, "가족지원": 0, "기타": 0}, "안산시": {"보건의료": 11, "건강관리예방": 14, "요양": 2, "일상생활돌봄": 11, "주거복지": 7, "가족지원": 0, "기타": 6}, "평택시": {"보건의료": 2, "건강관리예방": 10, "요양": 1, "일상생활돌봄": 15, "주거복지": 5, "가족지원": 0, "기타": 1}, "안양시": {"보건의료": 5, "건강관리예방": 10, "요양": 1, "일상생활돌봄": 15, "주거복지": 9, "가족지원": 0, "기타": 3}, "시흥시": {"보건의료": 7, "건강관리예방": 24, "요양": 9, "일상생활돌봄": 29, "주거복지": 10, "가족지원": 0, "기타": 2}, "파주시": {"보건의료": 7, "건강관리예방": 37, "요양": 9, "일상생활돌봄": 16, "주거복지": 7, "가족지원": 0, "기타": 0}, "김포시": {"보건의료": 3, "건강관리예방": 8, "요양": 8, "일상생활돌봄": 15, "주거복지": 5, "가족지원": 0, "기타": 7}, "의정부시": {"보건의료": 6, "건강관리예방": 12, "요양": 4, "일상생활돌봄": 25, "주거복지": 10, "가족지원": 0, "기타": 11}, "광주시": {"보건의료": 9, "건강관리예방": 9, "요양": 3, "일상생활돌봄": 13, "주거복지": 4, "가족지원": 0, "기타": 1}, "하남시": {"보건의료": 3, "건강관리예방": 15, "요양": 6, "일상생활돌봄": 10, "주거복지": 11, "가족지원": 0, "기타": 0}, "양주시": {"보건의료": 10, "건강관리예방": 10, "요양": 1, "일상생활돌봄": 20, "주거복지": 8, "가족지원": 0, "기타": 0}, "광명시": {"보건의료": 7, "건강관리예방": 18, "요양": 2, "일상생활돌봄": 22, "주거복지": 17, "가족지원": 0, "기타": 7}, "군포시": {"보건의료": 3, "건강관리예방": 17, "요양": 5, "일상생활돌봄": 21, "주거복지": 4, "가족지원": 0, "기타": 2}, "오산시": {"보건의료": 5, "건강관리예방": 6, "요양": 1, "일상생활돌봄": 13, "주거복지": 3, "가족지원": 0, "기타": 0}, "이천시": {"보건의료": 6, "건강관리예방": 12, "요양": 4, "일상생활돌봄": 10, "주거복지": 7, "가족지원": 0, "기타": 3}, "안성시": {"보건의료": 15, "건강관리예방": 16, "요양": 4, "일상생활돌봄": 22, "주거복지": 8, "가족지원": 0, "기타": 0}, "구리시": {"보건의료": 10, "건강관리예방": 26, "요양": 8, "일상생활돌봄": 14, "주거복지": 5, "가족지원": 0, "기타": 0}, "포천시": {"보건의료": 15, "건강관리예방": 18, "요양": 6, "일상생활돌봄": 15, "주거복지": 13, "가족지원": 0, "기타": 6}, "의왕시": {"보건의료": 3, "건강관리예방": 3, "요양": 1, "일상생활돌봄": 14, "주거복지": 6, "가족지원": 0, "기타": 0}, "양평군": {"보건의료": 16, "건강관리예방": 2, "요양": 1, "일상생활돌봄": 7, "주거복지": 4, "가족지원": 0, "기타": 6}, "여주시": {"보건의료": 7, "건강관리예방": 14, "요양": 5, "일상생활돌봄": 13, "주거복지": 3, "가족지원": 0, "기타": 1}, "동두천시": {"보건의료": 5, "건강관리예방": 8, "요양": 3, "일상생활돌봄": 12, "주거복지": 5, "가족지원": 0, "기타": 5}, "과천시": {"보건의료": 2, "건강관리예방": 9, "요양": 1, "일상생활돌봄": 20, "주거복지": 5, "가족지원": 0, "기타": 0}, "가평군": {"보건의료": 22, "건강관리예방": 0, "요양": 4, "일상생활돌봄": 21, "주거복지": 2, "가족지원": 0, "기타": 4}, "연천군": {"보건의료": 8, "건강관리예방": 10, "요양": 5, "일상생활돌봄": 13, "주거복지": 5, "가족지원": 0, "기타": 0}}, "city_type": {"수원시": {"전국": 44, "경기도": 0, "지역특화": 28, "미분류": 0}, "용인시": {"전국": 39, "경기도": 4, "지역특화": 16, "미분류": 1}, "고양시": {"전국": 37, "경기도": 3, "지역특화": 18, "미분류": 0}, "화성시": {"전국": 23, "경기도": 8, "지역특화": 17, "미분류": 0}, "성남시": {"전국": 22, "경기도": 0, "지역특화": 9, "미분류": 0}, "부천시": {"전국": 19, "경기도": 1, "지역특화": 16, "미분류": 0}, "남양주시": {"전국": 34, "경기도": 0, "지역특화": 26, "미분류": 0}, "안산시": {"전국": 42, "경기도": 0, "지역특화": 9, "미분류": 0}, "평택시": {"전국": 27, "경기도": 3, "지역특화": 4, "미분류": 0}, "안양시": {"전국": 29, "경기도": 4, "지역특화": 10, "미분류": 0}, "시흥시": {"전국": 54, "경기도": 0, "지역특화": 27, "미분류": 0}, "파주시": {"전국": 48, "경기도": 5, "지역특화": 21, "미분류": 2}, "김포시": {"전국": 31, "경기도": 3, "지역특화": 12, "미분류": 0}, "의정부시": {"전국": 34, "경기도": 7, "지역특화": 27, "미분류": 0}, "광주시": {"전국": 30, "경기도": 1, "지역특화": 8, "미분류": 0}, "하남시": {"전국": 27, "경기도": 0, "지역특화": 18, "미분류": 0}, "양주시": {"전국": 46, "경기도": 0, "지역특화": 3, "미분류": 0}, "광명시": {"전국": 27, "경기도": 19, "지역특화": 27, "미분류": 0}, "군포시": {"전국": 28, "경기도": 5, "지역특화": 19, "미분류": 0}, "오산시": {"전국": 16, "경기도": 0, "지역특화": 12, "미분류": 0}, "이천시": {"전국": 25, "경기도": 5, "지역특화": 11, "미분류": 1}, "안성시": {"전국": 34, "경기도": 8, "지역특화": 19, "미분류": 4}, "구리시": {"전국": 46, "경기도": 11, "지역특화": 6, "미분류": 0}, "포천시": {"전국": 58, "경기도": 5, "지역특화": 5, "미분류": 5}, "의왕시": {"전국": 20, "경기도": 0, "지역특화": 7, "미분류": 0}, "양평군": {"전국": 23, "경기도": 12, "지역특화": 1, "미분류": 0}, "여주시": {"전국": 26, "경기도": 4, "지역특화": 11, "미분류": 2}, "동두천시": {"전국": 27, "경기도": 6, "지역특화": 5, "미분류": 0}, "과천시": {"전국": 13, "경기도": 0, "지역특화": 24, "미분류": 0}, "가평군": {"전국": 47, "경기도": 2, "지역특화": 4, "미분류": 0}, "연천군": {"전국": 30, "경기도": 6, "지역특화": 5, "미분류": 0}}, "city_target": {"수원시": {"노인": 20, "노인+장애인": 38, "장애인": 14, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "용인시": {"노인": 45, "노인+장애인": 3, "장애인": 12, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "고양시": {"노인": 18, "노인+장애인": 22, "장애인": 18, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "화성시": {"노인": 10, "노인+장애인": 5, "장애인": 9, "노인(치매)": 1, "장기요양": 7, "저소득/수급": 5, "가족/아동/청소년": 1, "기타/누구나": 10, "미지정": 0}, "성남시": {"노인": 11, "노인+장애인": 18, "장애인": 0, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 1, "기타/누구나": 1, "미지정": 0}, "부천시": {"노인": 13, "노인+장애인": 15, "장애인": 8, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "남양주시": {"노인": 15, "노인+장애인": 0, "장애인": 1, "노인(치매)": 0, "장기요양": 6, "저소득/수급": 3, "가족/아동/청소년": 2, "기타/누구나": 33, "미지정": 0}, "안산시": {"노인": 8, "노인+장애인": 34, "장애인": 9, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "평택시": {"노인": 11, "노인+장애인": 15, "장애인": 5, "노인(치매)": 0, "장기요양": 1, "저소득/수급": 2, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "안양시": {"노인": 6, "노인+장애인": 2, "장애인": 11, "노인(치매)": 0, "장기요양": 2, "저소득/수급": 4, "가족/아동/청소년": 0, "기타/누구나": 18, "미지정": 0}, "시흥시": {"노인": 11, "노인+장애인": 10, "장애인": 14, "노인(치매)": 0, "장기요양": 10, "저소득/수급": 6, "가족/아동/청소년": 3, "기타/누구나": 27, "미지정": 0}, "파주시": {"노인": 10, "노인+장애인": 1, "장애인": 14, "노인(치매)": 0, "장기요양": 12, "저소득/수급": 9, "가족/아동/청소년": 2, "기타/누구나": 28, "미지정": 0}, "김포시": {"노인": 20, "노인+장애인": 12, "장애인": 0, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 4, "가족/아동/청소년": 0, "기타/누구나": 10, "미지정": 0}, "의정부시": {"노인": 23, "노인+장애인": 5, "장애인": 12, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 5, "가족/아동/청소년": 1, "기타/누구나": 22, "미지정": 0}, "광주시": {"노인": 14, "노인+장애인": 15, "장애인": 10, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "하남시": {"노인": 4, "노인+장애인": 2, "장애인": 0, "노인(치매)": 0, "장기요양": 9, "저소득/수급": 3, "가족/아동/청소년": 5, "기타/누구나": 22, "미지정": 0}, "양주시": {"노인": 22, "노인+장애인": 1, "장애인": 9, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 1, "가족/아동/청소년": 0, "기타/누구나": 16, "미지정": 0}, "광명시": {"노인": 8, "노인+장애인": 54, "장애인": 11, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "군포시": {"노인": 19, "노인+장애인": 2, "장애인": 4, "노인(치매)": 0, "장기요양": 6, "저소득/수급": 5, "가족/아동/청소년": 1, "기타/누구나": 15, "미지정": 0}, "오산시": {"노인": 6, "노인+장애인": 10, "장애인": 2, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 1, "가족/아동/청소년": 0, "기타/누구나": 9, "미지정": 0}, "이천시": {"노인": 4, "노인+장애인": 1, "장애인": 6, "노인(치매)": 0, "장기요양": 3, "저소득/수급": 5, "가족/아동/청소년": 0, "기타/누구나": 23, "미지정": 0}, "안성시": {"노인": 10, "노인+장애인": 3, "장애인": 15, "노인(치매)": 0, "장기요양": 6, "저소득/수급": 4, "가족/아동/청소년": 0, "기타/누구나": 25, "미지정": 2}, "구리시": {"노인": 22, "노인+장애인": 8, "장애인": 9, "노인(치매)": 0, "장기요양": 8, "저소득/수급": 5, "가족/아동/청소년": 1, "기타/누구나": 10, "미지정": 0}, "포천시": {"노인": 14, "노인+장애인": 30, "장애인": 5, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 5, "가족/아동/청소년": 0, "기타/누구나": 14, "미지정": 5}, "의왕시": {"노인": 11, "노인+장애인": 10, "장애인": 4, "노인(치매)": 0, "장기요양": 1, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 1, "미지정": 0}, "양평군": {"노인": 6, "노인+장애인": 0, "장애인": 3, "노인(치매)": 1, "장기요양": 1, "저소득/수급": 2, "가족/아동/청소년": 0, "기타/누구나": 21, "미지정": 2}, "여주시": {"노인": 12, "노인+장애인": 2, "장애인": 4, "노인(치매)": 0, "장기요양": 6, "저소득/수급": 6, "가족/아동/청소년": 0, "기타/누구나": 13, "미지정": 0}, "동두천시": {"노인": 10, "노인+장애인": 22, "장애인": 6, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}, "과천시": {"노인": 19, "노인+장애인": 8, "장애인": 5, "노인(치매)": 0, "장기요양": 2, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 3, "미지정": 0}, "가평군": {"노인": 6, "노인+장애인": 39, "장애인": 7, "노인(치매)": 0, "장기요양": 0, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 1, "미지정": 0}, "연천군": {"노인": 21, "노인+장애인": 8, "장애인": 6, "노인(치매)": 0, "장기요양": 6, "저소득/수급": 0, "가족/아동/청소년": 0, "기타/누구나": 0, "미지정": 0}}, "city_summary": {"수원시": {"total": 72, "전국": 44, "경기도": 0, "지역특화": 28, "unique": 60, "diversity": 0.82}, "용인시": {"total": 60, "전국": 39, "경기도": 4, "지역특화": 16, "unique": 32, "diversity": 0.742}, "고양시": {"total": 58, "전국": 37, "경기도": 3, "지역특화": 18, "unique": 37, "diversity": 0.713}, "화성시": {"total": 48, "전국": 23, "경기도": 8, "지역특화": 17, "unique": 30, "diversity": 0.634}, "성남시": {"total": 31, "전국": 22, "경기도": 0, "지역특화": 9, "unique": 17, "diversity": 0.745}, "부천시": {"total": 36, "전국": 19, "경기도": 1, "지역특화": 16, "unique": 20, "diversity": 0.731}, "남양주시": {"total": 60, "전국": 34, "경기도": 0, "지역특화": 26, "unique": 41, "diversity": 0.678}, "안산시": {"total": 51, "전국": 42, "경기도": 0, "지역특화": 9, "unique": 39, "diversity": 0.857}, "평택시": {"total": 34, "전국": 27, "경기도": 3, "지역특화": 4, "unique": 16, "diversity": 0.708}, "안양시": {"total": 43, "전국": 29, "경기도": 4, "지역특화": 10, "unique": 23, "diversity": 0.8}, "시흥시": {"total": 81, "전국": 54, "경기도": 0, "지역특화": 27, "unique": 53, "diversity": 0.788}, "파주시": {"total": 76, "전국": 48, "경기도": 5, "지역특화": 21, "unique": 63, "diversity": 0.704}, "김포시": {"total": 46, "전국": 31, "경기도": 3, "지역특화": 12, "unique": 24, "diversity": 0.863}, "의정부시": {"total": 68, "전국": 34, "경기도": 7, "지역특화": 27, "unique": 42, "diversity": 0.838}, "광주시": {"total": 39, "전국": 30, "경기도": 1, "지역특화": 8, "unique": 23, "diversity": 0.806}, "하남시": {"total": 45, "전국": 27, "경기도": 0, "지역특화": 18, "unique": 26, "diversity": 0.768}, "양주시": {"total": 49, "전국": 46, "경기도": 0, "지역특화": 3, "unique": 31, "diversity": 0.714}, "광명시": {"total": 73, "전국": 27, "경기도": 19, "지역특화": 27, "unique": 50, "diversity": 0.819}, "군포시": {"total": 52, "전국": 28, "경기도": 5, "지역특화": 19, "unique": 28, "diversity": 0.742}, "오산시": {"total": 28, "전국": 16, "경기도": 0, "지역특화": 12, "unique": 16, "diversity": 0.695}, "이천시": {"total": 42, "전국": 25, "경기도": 5, "지역특화": 11, "unique": 27, "diversity": 0.868}, "안성시": {"total": 65, "전국": 34, "경기도": 8, "지역특화": 19, "unique": 49, "diversity": 0.76}, "구리시": {"total": 63, "전국": 46, "경기도": 11, "지역특화": 6, "unique": 39, "diversity": 0.748}, "포천시": {"total": 73, "전국": 58, "경기도": 5, "지역특화": 5, "unique": 54, "diversity": 0.881}, "의왕시": {"total": 27, "전국": 20, "경기도": 0, "지역특화": 7, "unique": 11, "diversity": 0.66}, "양평군": {"total": 36, "전국": 23, "경기도": 12, "지역특화": 1, "unique": 24, "diversity": 0.761}, "여주시": {"total": 43, "전국": 26, "경기도": 4, "지역특화": 11, "unique": 20, "diversity": 0.794}, "동두천시": {"total": 38, "전국": 27, "경기도": 6, "지역특화": 5, "unique": 24, "diversity": 0.87}, "과천시": {"total": 37, "전국": 13, "경기도": 0, "지역특화": 24, "unique": 27, "diversity": 0.618}, "가평군": {"total": 53, "전국": 47, "경기도": 2, "지역특화": 4, "unique": 38, "diversity": 0.64}, "연천군": {"total": 41, "전국": 30, "경기도": 6, "지역특화": 5, "unique": 13, "diversity": 0.792}}, "cat_type": {"보건의료": {"전국": 171, "경기도": 13, "지역특화": 66, "미분류": 3}, "건강관리예방": {"전국": 323, "경기도": 12, "지역특화": 57, "미분류": 3}, "요양": {"전국": 111, "경기도": 0, "지역특화": 7, "미분류": 5}, "일상생활돌봄": {"전국": 280, "경기도": 55, "지역특화": 190, "미분류": 3}, "주거복지": {"전국": 77, "경기도": 35, "지역특화": 83, "미분류": 1}, "가족지원": {"전국": 1, "경기도": 0, "지역특화": 1, "미분류": 0}, "기타": {"전국": 43, "경기도": 7, "지역특화": 21, "미분류": 0}}, "cat_stats": {"보건의료": {"total": 253, "전국": 171, "경기도": 13, "지역특화": 66}, "건강관리예방": {"total": 395, "전국": 323, "경기도": 12, "지역특화": 57}, "요양": {"total": 123, "전국": 111, "경기도": 0, "지역특화": 7}, "일상생활돌봄": {"total": 528, "전국": 280, "경기도": 55, "지역특화": 190}, "주거복지": {"total": 196, "전국": 77, "경기도": 35, "지역특화": 83}, "가족지원": {"total": 2, "전국": 1, "경기도": 0, "지역특화": 1}, "기타": {"total": 71, "전국": 43, "경기도": 7, "지역특화": 21}}, "target_dist": {"노인+장애인": 395, "노인": 429, "장애인": 233, "기타/누구나": 322, "저소득/수급": 75, "장기요양": 86, "노인(치매)": 2, "가족/아동/청소년": 17, "미지정": 9}, "common_business": [{"name": "노인맞춤돌봄서비스", "count": 12, "cities": ["고양시", "구리시", "군포시", "성남시", "수원시", "안산시", "여주시", "의정부시", "파주시", "평택시", "포천시", "하남시"], "대분류": "일상생활돌봄", "중분류": "일상생 활지원", "사업구분": "전국"}, {"name": "재택의료센터", "count": 10, "cities": ["가평군", "과천시", "광주시", "군포시", "김포시", "동두천시", "성남시", "용인시", "이천시", "하남시"], "대분류": "보건의료", "중분류": "방문진료 (1)", "사업구분": "전국"}, {"name": "일차의료 방문진료 수가 시범사업", "count": 10, "cities": ["광명시", "구리시", "김포시", "남양주시", "양평군", "오산시", "용인시", "의정부시", "평택시", "포천시"], "대분류": "보건의료", "중분류": "방문진료 (1)", "사업구분": "미분류"}, {"name": "건강백세 운동교실", "count": 9, "cities": ["구리시", "양주시", "연천군", "오산시", "용인시", "의정부시", "이천시", "파주시", "평택시"], "대분류": "기타", "중분류": "건강-돌봄 통합지원 (2)", "사업구분": "전국"}, {"name": "장기요양 재택의료센터 시범사업", "count": 9, "cities": ["구리시", "부천시", "시흥시", "안산시", "안양시", "양주시", "의왕시", "평택시", "포천시"], "대분류": "보건의료", "중분류": "방문진료", "사업구분": "전국"}, {"name": "장애인 주택개조사업", "count": 9, "cities": ["가평군", "광명시", "광주시", "구리시", "안성시", "안양시", "양주시", "의정부시", "포천시"], "대분류": "주거복지", "중분류": "주거공간 개선", "사업구분": "전국"}, {"name": "치매관리사업", "count": 8, "cities": ["광주시", "구리시", "남양주시", "동두천시", "부천시", "수원시", "양주시", "화성시"], "대분류": "건강관리예방", "중분류": "치매관 리", "사업구분": "전국"}, {"name": "만성질환 건강지원사업", "count": 8, "cities": ["구리시", "시흥시", "안성시", "안양시", "양주시", "연천군", "용인시", "의정부시"], "대분류": "건강관리예방", "중분류": "건강관리 (3)", "사업구분": "전국"}, {"name": "방문건강관리사업", "count": 8, "cities": ["광주시", "구리시", "부천시", "시흥시", "양주시", "오산시", "용인시", "포천시"], "대분류": "건강관리예방", "중분류": "건강관리 (3)", "사업구분": "전국"}, {"name": "건강백세운동교실", "count": 7, "cities": ["고양시", "광명시", "광주시", "시흥시", "안산시", "안양시", "포천시"], "대분류": "건강관리예방", "중분류": "건강관리", "사업구분": "전국"}, {"name": "다제약물 관리사업", "count": 7, "cities": ["성남시", "시흥시", "안양시", "양평군", "의정부시", "파주시", "평택시"], "대분류": "건강관리예방", "중분류": "방문복약 관리", "사업구분": "전국"}, {"name": "퇴원환자 지역사회 연계사업", "count": 6, "cities": ["광주시", "안양시", "용인시", "의정부시", "평택시", "하남시"], "대분류": "보건의료", "중분류": "기타 (4)", "사업구분": "지역특화"}, {"name": "일상돌봄서비스", "count": 6, "cities": ["구리시", "동두천시", "안양시", "용인시", "하남시", "화성시"], "대분류": "건강관리예방", "중분류": "장애인 건강관리 (4)", "사업구분": "전국"}, {"name": "재가노인지원서비스", "count": 6, "cities": ["군포시", "성남시", "시흥시", "여주시", "용인시", "의정부시"], "대분류": "일상생활돌봄", "중분류": "가사지원(2) 식사지원(4)", "사업구분": "전국"}, {"name": "방문건강관리", "count": 6, "cities": ["고양시", "과천시", "동두천시", "성남시", "안성시", "화성시"], "대분류": "건강관리예방", "중분류": "건강관리", "사업구분": "전국"}, {"name": "재가의료급여사업", "count": 6, "cities": ["남양주시", "연천군", "오산시", "의왕시", "이천시", "하남시"], "대분류": "보건의료", "중분류": "기타", "사업구분": "전국"}, {"name": "통합사례관리", "count": 6, "cities": ["김포시", "남양주시", "시흥시", "안산시", "연천군", "평택시"], "대분류": "일상생활돌봄", "중분류": "기타", "사업구분": "전국"}, {"name": "주거환경개선", "count": 6, "cities": ["군포시", "동두천시", "안성시", "안양시", "의정부시", "이천시"], "대분류": "주거복지", "중분류": "주거공간 개선", "사업구분": "지역특화"}, {"name": "장기요양 가족휴가제", "count": 6, "cities": ["가평군", "구리시", "김포시", "시흥시", "연천군", "이천시"], "대분류": "요양", "중분류": "기타", "사업구분": "전국"}, {"name": "어르신 안전 하우징", "count": 6, "cities": ["구리시", "양평군", "의왕시", "의정부시", "파주시", "포천시"], "대분류": "주거복지", "중분류": "취약계층 주거지원 ( 5 )", "사업구분": "경기도"}, {"name": "장애인 건강주치의 시범사업", "count": 5, "cities": ["부천시", "시흥시", "용인시", "의정부시", "평택시"], "대분류": "건강관리예방", "중분류": "장애인 건강관리 (4)", "사업구분": "전국"}, {"name": "복지용구", "count": 5, "cities": ["동두천시", "시흥시", "연천군", "용인시", "의정부시"], "대분류": "요양", "중분류": "복지용구 (6)", "사업구분": "전국"}, {"name": "노인맞춤 돌봄서비스", "count": 5, "cities": ["광주시", "부천시", "안성시", "연천군", "용인시"], "대분류": "일상생활돌봄", "중분류": "가사지원 (2)", "사업구분": "전국"}, {"name": "독거노인 응급안전안심서비스", "count": 5, "cities": ["부천시", "시흥시", "연천군", "용인시", "평택시"], "대분류": "일상생활돌봄", "중분류": "기타 (8)", "사업구분": "전국"}, {"name": "장기요양 재가급여", "count": 5, "cities": ["고양시", "과천시", "광명시", "광주시", "이천시"], "대분류": "요양", "중분류": "장기요양", "사업구분": "전국"}, {"name": "노인맞춤돌봄 서비스", "count": 5, "cities": ["광명시", "김포시", "남양주시", "안양시", "화성시"], "대분류": "일상생활돌봄", "중분류": "일상생활 지원", "사업구분": "전국"}, {"name": "재가 의료급여 사업", "count": 5, "cities": ["광명시", "구리시", "부천시", "성남시", "포천시"], "대분류": "일상생활돌봄", "중분류": "기타", "사업구분": "전국"}, {"name": "누구나 돌봄", "count": 5, "cities": ["광주시", "부천시", "의정부시", "평택시", "포천시"], "대분류": "일상생활돌봄", "중분류": "가사, 이동, 식사, 기타 등", "사업구분": "경기도"}, {"name": "장애인활동지원", "count": 5, "cities": ["광명시", "시흥시", "연천군", "평택시", "포천시"], "대분류": "일상생활돌봄", "중분류": "일상생활 지 원", "사업구분": "전국"}, {"name": "AI·IoT기반 어르신 건강관리사업", "count": 5, "cities": ["광주시", "군포시", "양주시", "연천군", "오산시"], "대분류": "건강관리예방", "중분류": "건강관 리", "사업구분": "전국"}, {"name": "깔끄미사업", "count": 5, "cities": ["광명시", "구리시", "여주시", "의왕시", "하남시"], "대분류": "주거복지", "중분류": "주거공간 개선", "사업구분": "지역특화"}, {"name": "자살예방사업", "count": 4, "cities": ["광주시", "수원시", "안산시", "하남시"], "대분류": "건강관리예방", "중분류": "정신 건강 지원", "사업구분": "전국"}, {"name": "가사간병 방문지원사업", "count": 4, "cities": ["수원시", "연천군", "용인시", "평택시"], "대분류": "일상생활돌봄", "중분류": "일상생 활지원", "사업구분": "전국"}, {"name": "장애인 활동지원 서비스", "count": 4, "cities": ["동두천시", "수원시", "양평군", "오산시"], "대분류": "일상생활돌봄", "중분류": "장애인 일상생 활지원", "사업구분": "전국"}, {"name": "저소득 재가노인 식사배달", "count": 4, "cities": ["광주시", "양주시", "용인시", "평택시"], "대분류": "일상생활돌봄", "중분류": "식사지원 (4)", "사업구분": "전국"}, {"name": "다제약물관리사업", "count": 4, "cities": ["고양시", "부천시", "안산시", "포천시"], "대분류": "건강관리예방", "중분류": "방문복야 관리", "사업구분": "전국"}, {"name": "누구나돌봄", "count": 4, "cities": ["고양시", "김포시", "성남시", "화성시"], "대분류": "일상생활돌봄", "중분류": "생활지원 이동지원 식사지원", "사업구분": "경기도"}, {"name": "장기요양 재택의료센터", "count": 4, "cities": ["광명시", "안성시", "여주시", "화성시"], "대분류": "보건의료", "중분류": "방문진료", "사업구분": "전국"}, {"name": "장애인 응급안전안심서비스", "count": 4, "cities": ["부천시", "시흥시", "안산시", "평택시"], "대분류": "일상생활돌봄", "중분류": "스마트 돌봄", "사업구분": "전국"}, {"name": "누구나돌봄서비스", "count": 4, "cities": ["구리시", "군포시", "안산시", "여주시"], "대분류": "일상생활돌봄", "중분류": "기타", "사업구분": "전국"}, {"name": "재가의료급여 사업", "count": 4, "cities": ["김포시", "시흥시", "안양시", "양주시"], "대분류": "일상생활돌봄", "중분류": "일상생활 지원", "사업구분": "전국"}, {"name": "AI 노인말벗서비스", "count": 4, "cities": ["군포시", "양주시", "양평군", "의정부시"], "대분류": "일상생활돌봄", "중분류": "스마트 돌봄", "사업구분": "지역특화"}, {"name": "햇살하우징 사업", "count": 4, "cities": ["광명시", "구리시", "연천군", "의왕시"], "대분류": "주거복지", "중분류": "주거공간 개선", "사업구분": "경기도"}]};
+const CAT_COLORS = {'보건의료':'#1d4ed8','건강관리예방':'#0e7a5a','요양':'#7c3aed','일상생활돌봄':'#b45309','주거복지':'#c2410c','가족지원':'#9d174d','기타':'#4b5563'};
+const TYPE_COLORS = {'전국':'#0e7a5a','경기도':'#b45309','지역특화':'#9d174d','미분류':'#9aa3be'};
+
+// === KPI ===
+const kTotal = D.meta.total;
+const kNat = Object.values(D.cat_stats).reduce((s,c)=>s+c['전국'],0);
+const kGG  = Object.values(D.cat_stats).reduce((s,c)=>s+c['경기도'],0);
+const kLoc = Object.values(D.cat_stats).reduce((s,c)=>s+c['지역특화'],0);
+const totals = D.meta.city_order.map(c=>D.city_summary[c].total);
+const avgPerCity = (totals.reduce((a,b)=>a+b,0)/totals.length).toFixed(1);
+const maxCity = Math.max(...totals), minCity = Math.min(...totals);
+document.getElementById('kpi-total').textContent = kTotal.toLocaleString();
+document.getElementById('kpi-nat').textContent = kNat.toLocaleString();
+document.getElementById('kpi-gg').textContent = kGG.toLocaleString();
+document.getElementById('kpi-loc').textContent = kLoc.toLocaleString();
+document.getElementById('kpi-common').textContent = D.common_business.length;
+document.getElementById('kpi-avg').textContent = avgPerCity;
+document.querySelector('#kpi-avg').nextElementSibling.textContent = `최대 ${maxCity} - 최소 ${minCity}`;
+
+// === Tabs ===
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// === Chart defaults ===
+Chart.defaults.font.family = "'Noto Sans KR',sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#6b7595';
+
+// === Tab1: City stacked bar ===
+const sortedCities = [...D.meta.city_order].sort((a,b)=>D.city_summary[b].total - D.city_summary[a].total);
+new Chart(document.getElementById('ch-city-stack'), {
+  type:'bar',
+  data:{
+    labels: sortedCities,
+    datasets: ['전국','경기도','지역특화','미분류'].map(t=>({
+      label:t,
+      data: sortedCities.map(c=>D.city_type[c][t]),
+      backgroundColor: TYPE_COLORS[t],
+      borderWidth:0,
+    }))
+  },
+  options:{
+    indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    scales:{x:{stacked:true,grid:{color:'#eee'}},y:{stacked:true,grid:{display:false}}},
+    plugins:{legend:{position:'top'},tooltip:{mode:'index'}}
+  }
+});
+
+// === Tab1: Local Top/Bot ===
+const localPct = D.meta.city_order.map(c=>{
+  const t = D.city_summary[c];
+  return {city:c, pct: t.total>0 ? (t['지역특화']/t.total*100):0, local:t['지역특화'], total:t.total};
+}).sort((a,b)=>b.pct-a.pct);
+
+function makePctChart(canvasId, items, color){
+  new Chart(document.getElementById(canvasId), {
+    type:'bar',
+    data:{labels:items.map(x=>x.city),datasets:[{label:'지역특화 비율(%)',data:items.map(x=>+x.pct.toFixed(1)),backgroundColor:color,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      scales:{x:{beginAtZero:true,max:70,ticks:{callback:v=>v+'%'}},y:{grid:{display:false}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{const it=items[c.dataIndex];return `${it.local}/${it.total}건 (${it.pct.toFixed(1)}%)`}}}}}
+  });
+}
+makePctChart('ch-local-top', localPct.slice(0,10), '#9d174d');
+makePctChart('ch-local-bot', localPct.slice(-10).reverse(), '#9aa3be');
+
+// === Tab1: Diversity ===
+const divSorted = D.meta.city_order.map(c=>({city:c, d:D.city_summary[c].diversity})).sort((a,b)=>b.d-a.d);
+new Chart(document.getElementById('ch-diversity'),{
+  type:'bar',
+  data:{labels:divSorted.map(x=>x.city),datasets:[{label:'다양성 지수',data:divSorted.map(x=>x.d),backgroundColor:divSorted.map(x=>{
+    const v = x.d; if(v>=0.85) return '#0e7a5a'; if(v>=0.75) return '#1a56db'; if(v>=0.7) return '#b45309'; return '#9d174d';
+  }),borderRadius:4}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+    scales:{x:{beginAtZero:true,max:1,ticks:{stepSize:.1}},y:{grid:{display:false}}},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'Shannon: '+c.parsed.x}}}}
+});
+
+// === Tab2: Category donut ===
+new Chart(document.getElementById('ch-cat'),{
+  type:'doughnut',
+  data:{labels:D.meta.cat_order,datasets:[{data:D.meta.cat_order.map(c=>D.cat_stats[c].total),backgroundColor:D.meta.cat_order.map(c=>CAT_COLORS[c]),borderWidth:2,borderColor:'#fff'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}
+});
+
+// === Tab2: Cat × Type ===
+new Chart(document.getElementById('ch-cat-type'),{
+  type:'bar',
+  data:{labels:D.meta.cat_order,datasets:['전국','경기도','지역특화'].map(t=>({label:t,data:D.meta.cat_order.map(c=>D.cat_type[c][t]),backgroundColor:TYPE_COLORS[t]}))},
+  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#eee'}}},plugins:{legend:{position:'top'}}}
+});
+
+// === Tab2: Heatmap ===
+function buildHeatmap(containerId, dataMatrix, rows, cols, baseColor){
+  const allVals = [];
+  rows.forEach(r=>cols.forEach(c=>allVals.push(dataMatrix[r][c]||0)));
+  const max = Math.max(...allVals)||1;
+  let html = '<table class="heatmap"><thead><tr><th></th>';
+  cols.forEach(c=>html+=`<th>${c}</th>`); html+='<th>합계</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    let total = 0;
+    html += `<tr><th class="row-h">${r}</th>`;
+    cols.forEach(c=>{
+      const v = dataMatrix[r][c]||0; total+=v;
+      const intensity = v/max;
+      const bg = v===0 ? '#fafbfd' : `rgba(26,86,219,${0.08+intensity*0.7})`;
+      const fg = intensity>0.5 ? '#fff' : (v===0?'#9aa3be':'#1a2236');
+      html += `<td class="${v===0?'zero':''}" style="background:${bg};color:${fg}">${v}</td>`;
+    });
+    html += `<td class="total">${total}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  document.getElementById(containerId).innerHTML = html;
+}
+buildHeatmap('heatmap', D.city_cat, D.meta.city_order, D.meta.cat_order);
+
+// === Tab3: Target ===
+const targetEntries = D.meta.target_order.filter(t=>D.target_dist[t]>0).map(t=>({label:t,val:D.target_dist[t]}));
+new Chart(document.getElementById('ch-target'),{
+  type:'doughnut',
+  data:{labels:targetEntries.map(x=>x.label),datasets:[{data:targetEntries.map(x=>x.val),backgroundColor:['#1a56db','#7c3aed','#0e7a5a','#b45309','#c2410c','#9d174d','#1d4ed8','#4b5563','#9aa3be'],borderWidth:2,borderColor:'#fff'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}
+});
+new Chart(document.getElementById('ch-target-bar'),{
+  type:'bar',
+  data:{labels:targetEntries.map(x=>x.label),datasets:[{data:targetEntries.map(x=>x.val),backgroundColor:'#1a56db',borderRadius:4}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{beginAtZero:true},y:{grid:{display:false}}},plugins:{legend:{display:false}}}
+});
+buildHeatmap('heatmap-target', D.city_target, D.meta.city_order, D.meta.target_order);
+
+// === Tab4: Common business ===
+const cbCatSelect = document.getElementById('cb-cat-filter');
+D.meta.cat_order.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;cbCatSelect.appendChild(o);});
+function renderCB(){
+  const kw = document.getElementById('cb-search').value.trim().toLowerCase();
+  const cat = document.getElementById('cb-cat-filter').value;
+  const filtered = D.common_business.filter(b=>{
+    if (kw && !b.name.toLowerCase().includes(kw)) return false;
+    if (cat && b['대분류']!==cat) return false;
+    return true;
+  });
+  document.getElementById('cb-count').textContent = filtered.length;
+  const tb = document.querySelector('#cb-table tbody');
+  tb.innerHTML = filtered.map(b=>{
+    const tc = (b['사업구분']||'미분류').replace(/\s/g,'');
+    return `<tr><td><span class="cb-count">${b.count}</span></td><td><div class="cb-name">${b.name}</div></td><td><span style="color:${CAT_COLORS[b['대분류']]||'#666'};font-weight:600">${b['대분류']||''}</span><div style="font-size:.74rem;color:var(--text-light)">${b['중분류']||''}</div></td><td><span class="tag ${tc}">${b['사업구분']||'미분류'}</span></td><td class="cb-cities">${b.cities.join(' · ')}</td></tr>`;
+  }).join('');
+}
+document.getElementById('cb-search').addEventListener('input', renderCB);
+document.getElementById('cb-cat-filter').addEventListener('change', renderCB);
+renderCB();
+
+// Unique
+const uniqSorted = D.meta.city_order.map(c=>({city:c,u:D.city_summary[c].unique})).sort((a,b)=>b.u-a.u);
+new Chart(document.getElementById('ch-unique'),{
+  type:'bar',
+  data:{labels:uniqSorted.map(x=>x.city),datasets:[{label:'고유 사업 수',data:uniqSorted.map(x=>x.u),backgroundColor:'#9d174d',borderRadius:4}]},
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{beginAtZero:true,grid:{color:'#eee'}},y:{grid:{display:false}}},plugins:{legend:{display:false}}}
+});
+
+// === Tab5: Insights ===
+const top3 = sortedCities.slice(0,3).map(c=>`${c}(${D.city_summary[c].total})`).join(', ');
+const bot3 = sortedCities.slice(-3).reverse().map(c=>`${c}(${D.city_summary[c].total})`).join(', ');
+const localTop = localPct[0];
+const localBot = localPct[localPct.length-1];
+const divTop = divSorted[0];
+const divBot = divSorted[divSorted.length-1];
+
+document.getElementById('ins-1').innerHTML = `
+  <li>가장 많은 사업을 운영하는 시군은 <b>${top3}</b>이고, 가장 적은 시군은 <b>${bot3}</b>로 <b>${maxCity}건 vs ${minCity}건</b>의 약 ${(maxCity/minCity).toFixed(1)}배 격차가 존재합니다.</li>
+  <li class="note">자체 기획 비중(지역특화 비율)이 가장 높은 시군은 <b>${localTop.city} (${localTop.pct.toFixed(1)}%)</b>로, 절반에 가까운 사업이 시군 자체 기획입니다. 반면 <b>${localBot.city}</b>는 ${localBot.pct.toFixed(1)}%로 거의 모든 사업이 전국·경기도 표준 사업입니다.</li>
+  <li>다양성 지수 1위는 <b>${divTop.city} (${divTop.d})</b>, 최하위는 <b>${divBot.city} (${divBot.d})</b>로 후자는 사업이 특정 영역(주로 일상생활돌봄)에 편중되어 있습니다.</li>
+`;
+
+const catSorted = D.meta.cat_order.map(c=>({c,n:D.cat_stats[c].total})).sort((a,b)=>b.n-a.n);
+const topCat = catSorted[0], topCat2 = catSorted[1];
+const weakCat = catSorted[catSorted.length-1];
+const localCatPct = D.meta.cat_order.map(c=>({c,p:D.cat_type[c]['지역특화']/(D.cat_stats[c].total||1)*100})).sort((a,b)=>b.p-a.p);
+document.getElementById('ins-2').innerHTML = `
+  <li><b>${topCat.c}(${topCat.n}건)</b>과 <b>${topCat2.c}(${topCat2.n}건)</b>이 전체 사업의 약 ${((topCat.n+topCat2.n)/kTotal*100).toFixed(0)}%를 차지하며, 통합돌봄의 양대 축입니다.</li>
+  <li class="warn"><b>${weakCat.c}</b>는 전체 ${weakCat.n}건으로 가장 적어 사실상 미개척 영역입니다. 31개 시군 평균 ${(weakCat.n/31).toFixed(1)}건/시군.</li>
+  <li class="note">지역특화 비율이 가장 높은 카테고리는 <b>${localCatPct[0].c}(${localCatPct[0].p.toFixed(1)}%)</b>으로, 시군 차원의 자체 기획이 가장 활발한 영역입니다.</li>
+`;
+
+document.getElementById('ins-3').innerHTML = `
+  <li><b>노인 단독(${D.target_dist['노인']}건)</b>과 <b>노인+장애인 동시(${D.target_dist['노인+장애인']}건)</b>가 전체의 ${((D.target_dist['노인']+D.target_dist['노인+장애인'])/kTotal*100).toFixed(0)}%를 차지 — 통합돌봄 정책이 사실상 노인 중심으로 설계되어 있습니다.</li>
+  <li class="warn"><b>가족/아동/청소년 대상 사업은 ${D.target_dist['가족/아동/청소년']||0}건</b>에 불과하며, 통합돌봄 범위에서 영케어러·돌봄가족 지원은 거의 비어 있는 영역입니다.</li>
+  <li><b>장애인 단독 대상</b> 사업 ${D.target_dist['장애인']}건, <b>치매 특화</b> ${D.target_dist['노인(치매)']||0}건으로 상대적으로 협소합니다.</li>
+`;
+
+const top5cb = D.common_business.slice(0,5);
+document.getElementById('ins-4').innerHTML = `
+  <li>가장 표준화된 사업은 <b>${top5cb[0].name}</b>(${top5cb[0].count}개 시군)로 사실상 전국 공통입니다. 이어 <b>${top5cb[1].name}</b>(${top5cb[1].count}), <b>${top5cb[2].name}</b>(${top5cb[2].count}) 순입니다.</li>
+  <li>4개 이상 시군에 등장하는 표준 사업은 총 <b>${D.common_business.length}개</b>로, 이들이 통합돌봄의 '핵심 메뉴'를 형성합니다.</li>
+  <li class="note">단일 시군에만 등장하는 고유 사업이 가장 많은 곳은 <b>${uniqSorted[0].city}(${uniqSorted[0].u}건)</b> — 자체 기획·실험이 가장 활발합니다.</li>
+`;
+
+document.getElementById('ins-5').innerHTML = `
+  <li>지원대상 필드가 자유기술이라 "노인,장애인", "노인, 장애인", "노인·장애인" 등 표기 차이가 많습니다. 본 분석은 텍스트 매칭으로 9개 표준 그룹으로 정규화했습니다.</li>
+  <li>"기타" 중분류가 280건(전체의 18%)으로 가장 많아, 분류 체계의 정밀도 개선 여지가 큽니다.</li>
+  <li>사업구분이 "미분류"인 사업이 ${kTotal - kNat - kGG - kLoc}건 존재합니다. 원본 PDF 변환 과정의 추출 오류로 추정됩니다.</li>
+  <li>본 분석은 절대 건수 기준이며, 시군 인구·예산·면적 등으로 보정하면 결과가 달라질 수 있습니다.</li>
+`;
+</script>
+</body>
+</html>

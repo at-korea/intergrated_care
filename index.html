@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전국 통합돌봄서비스 대시보드 — Integrated Care Korea</title>
+<meta name="description" content="대한민국 17개 시·도 226개 시·군·구의 보건복지부 지역사회 통합돌봄 서비스 12,104건을 검색·비교·분석할 수 있는 인터랙티브 대시보드">
+<meta property="og:title" content="전국 통합돌봄서비스 대시보드">
+<meta property="og:description" content="226개 시·군·구 12,104건 통합돌봄 사업을 한눈에. 지도·검색·비교·인구보정·PDF 리포트.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f7fa;--surface:#fff;--surface2:#f0f2f7;
+  --border:#dde1ea;--text:#1a2236;--text-muted:#6b7595;--text-light:#9aa3be;
+  --accent:#1a56db;--accent-hover:#1344b8;--accent-light:#e8effe;
+  --green:#0e7a5a;--green-bg:#e6f7f2;
+  --orange:#b45309;--orange-bg:#fef3e2;
+  --pink:#9d174d;--pink-bg:#fce7f3;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;
+  --shadow:0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.05);
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
+
+.hero{background:linear-gradient(135deg,#1a56db 0%,#7c3aed 100%);color:#fff;padding:60px 24px 80px;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
+.hero-inner{max-width:1100px;margin:0 auto;position:relative;z-index:1}
+.hero h1{font-size:2.4rem;font-weight:800;margin-bottom:12px;letter-spacing:-0.02em;line-height:1.2}
+.hero p.lead{font-size:1.1rem;opacity:.92;max-width:680px;line-height:1.6}
+.hero-stats{display:flex;gap:24px;margin-top:28px;flex-wrap:wrap}
+.hero-stat{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:12px 18px;backdrop-filter:blur(6px)}
+.hero-stat .v{font-size:1.6rem;font-weight:700;line-height:1}
+.hero-stat .l{font-size:.78rem;opacity:.85;margin-top:2px}
+
+.main{max-width:1100px;margin:-40px auto 0;padding:0 24px 60px;position:relative;z-index:2}
+.dashboards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.card{background:var(--surface);border-radius:14px;padding:24px;box-shadow:var(--shadow);transition:transform .18s,box-shadow .18s,border-color .18s;border:1px solid var(--border);text-decoration:none;color:inherit;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.1);border-color:var(--accent)}
+.card.featured{grid-column:1/-1;background:linear-gradient(135deg,#fff 0%,#f8faff 100%);border-color:var(--accent)}
+.card.featured::after{content:'추천';position:absolute;top:18px;right:18px;background:var(--accent);color:#fff;font-size:.72rem;padding:3px 10px;border-radius:10px;font-weight:600}
+.card .icon{font-size:2rem;margin-bottom:10px}
+.card .title{font-size:1.15rem;font-weight:700;margin-bottom:6px}
+.card .desc{font-size:.88rem;color:var(--text-muted);line-height:1.6;margin-bottom:14px;flex:1}
+.card .features{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px}
+.card .features span{font-size:.7rem;background:var(--surface2);color:var(--text-muted);padding:2px 8px;border-radius:8px;border:1px solid var(--border)}
+.card.featured .features span{background:var(--accent-light);color:var(--accent);border-color:#b8cffe}
+.card .arrow{display:inline-flex;align-items:center;gap:6px;color:var(--accent);font-weight:600;font-size:.88rem}
+.card:hover .arrow svg{transform:translateX(4px)}
+.card .arrow svg{transition:transform .18s}
+
+.section{margin-top:48px}
+.section h2{font-size:1.4rem;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.section .desc{color:var(--text-muted);font-size:.92rem;margin-bottom:18px;max-width:780px;line-height:1.7}
+
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.feature{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;transition:border-color .15s}
+.feature:hover{border-color:var(--accent)}
+.feature .icon{font-size:1.6rem;margin-bottom:8px}
+.feature .name{font-weight:700;font-size:.96rem;margin-bottom:4px}
+.feature .text{font-size:.84rem;color:var(--text-muted);line-height:1.6}
+
+.callout{background:linear-gradient(135deg,var(--accent-light) 0%,#fff 100%);border-left:4px solid var(--accent);padding:18px 22px;border-radius:8px;margin-top:24px;font-size:.92rem;line-height:1.7}
+.callout strong{color:var(--accent)}
+
+footer{margin-top:60px;padding:28px 24px;border-top:1px solid var(--border);background:var(--surface);text-align:center;color:var(--text-muted);font-size:.82rem;line-height:1.7}
+footer a{color:var(--accent);text-decoration:none}
+footer a:hover{text-decoration:underline}
+
+@media(max-width:640px){
+  .hero{padding:40px 20px 60px}
+  .hero h1{font-size:1.7rem}
+  .hero p.lead{font-size:.96rem}
+  .hero-stat .v{font-size:1.3rem}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <h1>전국 통합돌봄서비스 대시보드</h1>
+    <p class="lead">대한민국 17개 시·도 226개 시·군·구의 보건복지부 지역사회 통합돌봄 사업 12,104건을 한눈에 검색·비교·분석할 수 있는 인터랙티브 대시보드</p>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="v">12,104</div><div class="l">사업 건수</div></div>
+      <div class="hero-stat"><div class="v">228</div><div class="l">시·군·구</div></div>
+      <div class="hero-stat"><div class="v">17</div><div class="l">시·도</div></div>
+      <div class="hero-stat"><div class="v">5,117만</div><div class="l">인구 커버리지</div></div>
+      <div class="hero-stat"><div class="v">2026.04</div><div class="l">데이터 기준</div></div>
+    </div>
+  </div>
+</div>
+
+<main class="main">
+
+<div class="dashboards">
+  <a href="dashboard.html" class="card featured">
+    <div class="icon">🌐</div>
+    <div class="title">통합 대시보드 v2 (메인)</div>
+    <div class="desc">지도 뷰(시·도 / 시·군·구 단위) · 검색 · 비교 · 분석 + 인구 1만명당 보정 + PDF 리포트 출력. 모든 기능을 한 페이지에 통합한 종합 도구입니다.</div>
+    <div class="features">
+      <span>🗺 시·군·구 지도</span>
+      <span>🔍 검색·필터</span>
+      <span>🔄 비교 모드</span>
+      <span>📊 통계 분석</span>
+      <span>👥 인구 보정</span>
+      <span>📄 PDF 리포트</span>
+      <span>🔗 URL 공유</span>
+    </div>
+    <span class="arrow">바로 열기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
+
+  <a href="search.html" class="card">
+    <div class="icon">🔍</div>
+    <div class="title">검색 메뉴판</div>
+    <div class="desc">시·도 → 시·군·구 풀다운으로 빠르게 사업을 찾아보고 엑셀로 다운로드. 가벼운 검색 전용 인터페이스.</div>
+    <div class="features">
+      <span>풀다운 검색</span>
+      <span>엑셀 다운로드</span>
+      <span>카드/테이블</span>
+    </div>
+    <span class="arrow">열기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
+
+  <a href="analysis.html" class="card">
+    <div class="icon">📊</div>
+    <div class="title">전국 심층 분석</div>
+    <div class="desc">시·도 격차, 카테고리 패턴, 지원대상 커버리지, 전국 표준 사업 카탈로그, 핵심 인사이트.</div>
+    <div class="features">
+      <span>히트맵</span>
+      <span>인사이트</span>
+      <span>표준 사업 60+</span>
+    </div>
+    <span class="arrow">열기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
+
+  <a href="gyeonggi-analysis.html" class="card">
+    <div class="icon">🏞</div>
+    <div class="title">경기도 심층 분석</div>
+    <div class="desc">경기도 31개 시·군 1,615건 사업의 격차·카테고리·공통사업 분석. 전국 분석의 시범 버전.</div>
+    <div class="features">
+      <span>경기도 31개</span>
+      <span>4개 시각화</span>
+    </div>
+    <span class="arrow">열기 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></span>
+  </a>
+</div>
+
+<div class="section">
+  <h2>주요 기능</h2>
+  <div class="desc">메인 통합 대시보드(v2)는 기획자·연구자·정책 담당자가 통합돌봄 사업 데이터를 다양한 관점에서 탐색하도록 설계되었습니다.</div>
+  <div class="feature-grid">
+    <div class="feature"><div class="icon">🗺</div><div class="name">지도 뷰</div><div class="text">시·도 또는 시·군·구 단위로 색상 시각화. 총 사업 수, 시·군·구 평균, 인구 1만명당, 지역특화 비율 4가지 모드.</div></div>
+    <div class="feature"><div class="icon">🔍</div><div class="name">cascading 검색</div><div class="text">시·도 → 시·군·구 풀다운. 카테고리·사업구분·키워드 조합 필터. 카드뷰/테이블뷰 토글, 페이지네이션 지원.</div></div>
+    <div class="feature"><div class="icon">📊</div><div class="name">시·군·구 프로필</div><div class="text">선택한 지역의 인포그래픽 카드 자동 생성. 전국 평균 대비 강·약 영역, 인구 보정 위치, 카테고리 분포 차트.</div></div>
+    <div class="feature"><div class="icon">🔄</div><div class="name">비교 모드</div><div class="text">2~4개 시·군·구를 동시 선택. 사업명 매트릭스로 공통/특이 사업을 색상으로 구분. 차이만 보기 토글.</div></div>
+    <div class="feature"><div class="icon">👥</div><div class="name">인구 보정</div><div class="text">228개 시·군·구 인구 데이터로 1만명당 사업 수 계산. 절대 건수와 인구 정규화의 차이 비교.</div></div>
+    <div class="feature"><div class="icon">📄</div><div class="name">PDF 리포트</div><div class="text">시·군·구 선택 후 한 번 클릭으로 자동 생성. 인포그래픽 + 사업 카드 목록. 자동 페이지 분할.</div></div>
+    <div class="feature"><div class="icon">📑</div><div class="name">엑셀 다운로드</div><div class="text">현재 필터 결과를 xlsx로 내보내기. 파일명에 시·도/시·군·구 자동 포함.</div></div>
+    <div class="feature"><div class="icon">🔗</div><div class="name">URL 공유</div><div class="text">현재 탭과 필터 상태가 URL 해시에 인코딩. 링크를 보내면 같은 화면이 열림.</div></div>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>🔍 발견 1:</strong> 인구 1만명당 사업 수로 보정하면 순위가 정반대로 뒤집힙니다. 농촌 군 단위(군위 46건, 강진 39건)는 카탈로그가 두텁지만, 인구 100만 이상 대도시(성남 0.34건, 창원 0.43건)는 단위 인구당 사업 수가 적습니다. 단, 사업 메뉴 수는 실제 수혜자나 예산 규모를 반영하지 않습니다.<br><br>
+  <strong>🔍 발견 2:</strong> 가족·아동·청소년 대상 사업은 전국 17건뿐 — 영케어러·돌봄가족 지원은 거의 비어 있는 영역. 통합돌봄이 사실상 노인 중심으로 설계되어 있습니다.<br><br>
+  <strong>🔍 발견 3:</strong> 10개 이상 시·군·구에 등장하는 표준 사업 159개가 전국 통합돌봄의 핵심 메뉴 카탈로그를 형성. 노인맞춤돌봄서비스, 재택의료센터, 일차의료 방문진료 시범사업이 가장 표준화된 사업 Top 3.
+</div>
+
+<div class="section">
+  <h2>데이터 정보</h2>
+  <div class="desc">
+    이 대시보드의 데이터는 보건복지부 지역사회 통합돌봄 누리집에 게시된 전국 234개 시·군·구별 서비스 메뉴판 PDF(2026.03~04 기준)를 자동 파싱한 결과입니다. 표 구조가 시·도마다 달라 컬럼 매핑·셀 병합 보정 후 추출했으며, 일부 사업은 사업구분 컬럼 누락으로 "미분류"로 표기됩니다.
+  </div>
+  <div class="feature-grid">
+    <div class="feature">
+      <div class="name">📂 raw 데이터</div>
+      <div class="text" style="font-family:monospace;font-size:.78rem">
+        <a href="data/services_national.json" style="color:var(--accent)">services_national.json</a> (12,104건)<br>
+        <a href="data/stats.json" style="color:var(--accent)">stats.json</a> (시도/시군구 통계)<br>
+        <a href="data/population.json" style="color:var(--accent)">population.json</a> (228개 인구)<br>
+        <a href="data/korea_sgg.geojson" style="color:var(--accent)">korea_sgg.geojson</a> (250 features)<br>
+        <a href="data/korea_sido.geojson" style="color:var(--accent)">korea_sido.geojson</a> (17 features)
+      </div>
+    </div>
+    <div class="feature">
+      <div class="name">📌 출처</div>
+      <div class="text">
+        <a href="https://www.mohw.go.kr/menu.es?mid=a60600000000" target="_blank" style="color:var(--accent)">보건복지부 지역사회 통합돌봄 전용 누리집</a><br>
+        행정안전부 주민등록 인구통계 (2024)<br>
+        통계청 KOSTAT GeoJSON (2018)
+      </div>
+    </div>
+    <div class="feature">
+      <div class="name">⚙️ 기술</div>
+      <div class="text">
+        Pure HTML/CSS/JS · Chart.js · jsPDF + html2canvas · SheetJS<br>
+        백엔드 없이 단일 HTML로 동작. 데이터 모두 클라이언트 임베드.
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  <div>
+    <strong>출처:</strong> <a href="https://www.mohw.go.kr/menu.es?mid=a60600000000" target="_blank">보건복지부 지역사회 통합돌봄</a> ·
+    <strong>데이터 기준:</strong> 2026.03~04 ·
+    <strong>총 사업:</strong> 12,104건 / 226개 시·군·구
+  </div>
+  <div style="margin-top:8px;font-size:.74rem;color:var(--text-light)">
+    이 페이지는 정책 연구·기획 참고용으로 제작된 비공식 시각화입니다. 정확한 사업 신청·이용은 해당 시·군·구 보건소 또는 복지부서로 문의해 주세요.
+  </div>
+</footer>
+
+</body>
+</html>

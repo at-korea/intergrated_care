@@ -1,0 +1,25 @@
+# 임시 파일
+*.tmp
+*.bak
+*.log
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python (파싱 스크립트 작업 시)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node (사용 안 하지만 혹시 추가 시)
+node_modules/
+
+# 작업 중 파일 (배포에 불필요)
+draft/
+*_draft.html
